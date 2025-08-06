@@ -2,16 +2,16 @@ import argparse
 import pandas as pd
 from binance.client import Client
 from config import BINANCE_API_KEY as API_KEY, BINANCE_API_SECRET as API_SECRET
+from indicators import apply_indicators
 
-# === Step 1: Data Ingestion from Binance ===
-# This script fetches historical OHLCV data for a given symbol and interval.
+# === Step 1 & 2: Data Ingestion and Indicators ===
+# This script fetches historical OHLCV data and adds technical indicators.
 
 # Initialize Binance client
 if not API_KEY or not API_SECRET:
     raise RuntimeError("Please fill in your Binance API credentials in config.py")
 
 client = Client(API_KEY, API_SECRET)
-
 
 def fetch_ohlcv(symbol: str, interval: str, limit: int) -> pd.DataFrame:
     """
@@ -33,9 +33,8 @@ def fetch_ohlcv(symbol: str, interval: str, limit: int) -> pd.DataFrame:
 
     return df[['open_time', 'open', 'high', 'low', 'close', 'volume']]
 
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Fetch OHLCV data from Binance')
+    parser = argparse.ArgumentParser(description='Fetch OHLCV data and add indicators')
     parser.add_argument('--symbol', type=str, default='BTCUSDT',
                         help='Trading symbol (e.g. BTCUSDT)')
     parser.add_argument('--interval', type=str, default=Client.KLINE_INTERVAL_1HOUR,
@@ -52,9 +51,13 @@ if __name__ == '__main__':
 
     print(f"Fetching last {limit} candles for {symbol} at interval {interval}...")
     data = fetch_ohlcv(symbol, interval, limit)
-    print(data.head())
+
+    print("Applying technical indicators...")
+    data_with_ind = apply_indicators(data)
+    print(data_with_ind.head())
 
     # Determine output filename
-    csv_file = args.output or f"{symbol}_{interval}_{limit}.csv"
-    data.to_csv(csv_file, index=False)
-    print(f"Data saved to {csv_file}")
+    default_name = f"{symbol}_{interval}_{limit}_indicators.csv"
+    csv_file = args.output or default_name
+    data_with_ind.to_csv(csv_file, index=False)
+    print(f"Data with indicators saved to {csv_file}")
